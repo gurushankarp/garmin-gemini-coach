@@ -2,7 +2,7 @@ name: Daily Garmin Coach
 
 on:
   schedule:
-    - cron: '0 6 * * *' # Runs daily at 06:00 UTC (adjust as needed)
+    - cron: '0 4 * * *' # Runs daily at 04:00 UTC (9:30 AM IST)
   workflow_dispatch: # Allows manual trigger button for testing
 
 jobs:
