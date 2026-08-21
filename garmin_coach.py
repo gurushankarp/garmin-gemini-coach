@@ -5,33 +5,43 @@ from email.mime.text import MIMEText
 from garminconnect import Garmin
 from google import genai
 
-# Dates for a complete 24-hour cycle
 today = datetime.date.today().isoformat()
 yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
 
 try:
-    print(f"Fetching Garmin metrics (Daytime: {yesterday}, Sleep: {today})...")
+    print(f"Fetching Garmin metrics (Yesterday: {yesterday}, Sleep/Morning: {today})...")
     garmin = Garmin(os.getenv("GARMIN_EMAIL"), os.getenv("GARMIN_PASSWORD"))
     garmin.login()
 
-    # Pull yesterday's activity/stress and today's morning sleep report
+    # Fetch early morning activities for today (if any)
+    try:
+        today_activities = garmin.get_activities_by_date(today, today)
+    except Exception as act_err:
+        print(f"Could not fetch today's activities: {act_err}")
+        today_activities = []
+
     garmin_payload = {
         "yesterday_daytime_metrics": {
             "summary": garmin.get_user_summary(yesterday),
             "stress": garmin.get_stress_data(yesterday)
         },
-        "last_night_sleep": garmin.get_sleep_data(today)
+        "last_night_sleep": garmin.get_sleep_data(today),
+        "today_morning_activities": today_activities
     }
 
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
     prompt = f"""
     You are an elite sports scientist and recovery coach. 
-    Analyze this complete 24-hour cycle:
+    Analyze this complete sequence of health and training data:
     1. Yesterday's Daytime Effort & Stress ({yesterday}): {garmin_payload['yesterday_daytime_metrics']}
     2. Last Night's Sleep & Recovery ({today}): {garmin_payload['last_night_sleep']}
+    3. Today's Early Morning Activities logged before 9:00 AM ({today}): {garmin_payload['today_morning_activities']}
 
-    Explain how yesterday's physical strain and stress impacted last night's sleep quality, and give a training recommendation for today.
+    Provide a concise breakdown:
+    - Sleep Quality: How yesterday's effort influenced last night's sleep score.
+    - Morning Session Impact: Analyze any workout completed this morning (or note if no morning session was logged).
+    - Guidance for Today: Pacing, rest, or recommended training load for the rest of the day.
     """
 
     response = client.models.generate_content(
@@ -48,7 +58,7 @@ try:
     email_password = os.getenv("EMAIL_PASSWORD")
 
     msg = MIMEText(response.text)
-    msg['Subject'] = f"Garmin Recovery & Training Report ({today})"
+    msg['Subject'] = f"Garmin Recovery & Morning Report ({today})"
     msg['From'] = email_address
     msg['To'] = email_address
 
