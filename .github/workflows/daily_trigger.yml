@@ -1,0 +1,28 @@
+name: Daily Garmin Coach
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # Runs daily at 06:00 UTC (adjust as needed)
+  workflow_dispatch: # Allows manual trigger button for testing
+
+jobs:
+  run-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install garminconnect google-genai
+
+      - name: Run Script
+        env:
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python garmin_coach.py
